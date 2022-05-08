@@ -80,15 +80,17 @@ def bloodPressurePlot(dates, sys_values, dia_values):
     plt.show()
 
 parser = argparse.ArgumentParser(description='Health plotter')
-parser.add_argument('csv_file', type=str, help='CSV file with data')
-parser.add_argument('--ldl', type=int, help='Column in a csv file with LDL cholesterol')
-parser.add_argument('--hdl', type=int, help='Column in a csv file with HDL cholesterol')
-parser.add_argument('--chol', type=int, help='Column in a csv file with Total cholesterol')
-parser.add_argument('--trig', type=int, help='Column in a csv file with Triglycerides')
-parser.add_argument('--weight', type=int, help='Column in a csv file with Weight')
-parser.add_argument('--bpm', type=int, help='Column in a csv file with BPM (heart rate)')
-parser.add_argument('--bp', metavar="SYS,DIA", help='Columns in a csv file with systolic and diastolic blood pressures')
-parser.add_argument('--verbose', action='store_true', help='Print head of read file')
+parser.add_argument('csv_file', type=str, help='CSV file with data.')
+parser.add_argument('--ldl', type=int, help='Column in a csv file with LDL cholesterol.')
+parser.add_argument('--hdl', type=int, help='Column in a csv file with HDL cholesterol.')
+parser.add_argument('--chol', type=int, help='Column in a csv file with Total cholesterol.')
+parser.add_argument('--trig', type=int, help='Column in a csv file with Triglycerides.')
+parser.add_argument('--weight', type=int, help='Column in a csv file with Weight.')
+parser.add_argument('--bpm', type=int, help='Column in a csv file with BPM (heart rate).')
+parser.add_argument('--bp', metavar="SYS,DIA", help='Columns in a csv file with systolic and diastolic blood pressures.')
+parser.add_argument('--custom', type=int, help='Column in a csv file with custom data to plot.')
+parser.add_argument('--dates', type=int, default=0, help='Column in a csv file with dates. 0 is a default value.')
+parser.add_argument('--verbose', action='store_true', help='Print head of read file.')
 
 args = parser.parse_args()
 
@@ -96,8 +98,7 @@ df = pandas.read_csv(args.csv_file)
 if args.verbose:
     print(df.head())
 
-# Date column is assumed to be 0
-dates=[dateutil.parser.parse(x) for x in df.iloc[:, 0].values]
+dates=[dateutil.parser.parse(x) for x in df.iloc[:, args.dates].values]
 
 if args.ldl:
     lipidPlot(dates, df.iloc[:, args.ldl].values, "LDL", 38.66976)
@@ -135,3 +136,7 @@ if args.bp:
     sys_column = int(items[0])
     dia_column = int(items[1])
     bloodPressurePlot(dates, df.iloc[:, sys_column].values, df.iloc[:, dia_column].values)
+
+# Plot custom data
+if args.custom:
+    singlePlot(dates, df.iloc[:, args.custom].values, "Custom", "??")
