@@ -11,7 +11,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 from scipy import interpolate
-from scipy.ndimage.filters import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d
 
 # Plots scatter series data. On top of that it adds:
 # 1. Filter to plot smooth data
@@ -40,9 +40,7 @@ def plotSeries(ax, name, dates, values):
 
 # Supports two units: mmol/L (SI) and mg/dL.
 # Tries to guess data unit and plots two axies.
-def lipidPlot(df, name, value_column, mmolPerL_TO_mgPerdL, date_column = 0):
-    dates=[dateutil.parser.parse(x) for x in df.iloc[:, date_column].values]
-    values = df.iloc[:, value_column].values
+def lipidPlot(dates, values, name, mmolPerL_TO_mgPerdL):
     if len(values) == 0:
         return
     # Guess units
@@ -66,23 +64,14 @@ def lipidPlot(df, name, value_column, mmolPerL_TO_mgPerdL, date_column = 0):
     plt.show()
 
 # Plot single simple plot
-def singlePlot(df, name, label, value_column, date_column = 0):
-    dates=[dateutil.parser.parse(x) for x in df.iloc[:, date_column].values]
-    values = df.iloc[:, value_column].values
-    if len(values) == 0:
-        return
-
+def singlePlot(dates, values, name, label):
     ax1 = plt.subplot()
     plotSeries(ax1, name, dates, values)
     ax1.set_ylabel(label)
     ax1.legend()
     plt.show()
 
-def bloodPressurePlot(df, sys_column, dia_column, date_column = 0):
-    dates=[dateutil.parser.parse(x) for x in df.iloc[:, date_column].values]
-    sys_values = df.iloc[:, sys_column].values
-    dia_values = df.iloc[:, dia_column].values
-
+def bloodPressurePlot(dates, sys_values, dia_values):
     ax1 = plt.subplot()
     plotSeries(ax1, "BP SYS", dates, sys_values)
     plotSeries(ax1, "BP DIA", dates, dia_values)
@@ -107,21 +96,42 @@ df = pandas.read_csv(args.csv_file)
 if args.verbose:
     print(df.head())
 
+# Date column is assumed to be 0
+dates=[dateutil.parser.parse(x) for x in df.iloc[:, 0].values]
+
 if args.ldl:
-    lipidPlot(df, "LDL", args.ldl, 38.66976)
+    lipidPlot(dates, df.iloc[:, args.ldl].values, "LDL", 38.66976)
 if args.hdl:
-    lipidPlot(df, "HDL", args.hdl, 38.66976)
+    lipidPlot(dates, df.iloc[:, args.hdl].values, "HDL", 38.66976)
 if args.chol:
-    lipidPlot(df, "CHOL", args.chol, 38.66976)
+    lipidPlot(dates, df.iloc[:, args.chol].values, "CHOL", 38.66976)
 if args.trig:
-    lipidPlot(df, "TRIG", args.trig, 88.57396)
+    lipidPlot(dates, df.iloc[:, args.trig].values, "TRIG", 88.57396)
+
+# Values derived from the lipid panel
+if args.trig and args.hdl:
+    trig_values = df.iloc[:, args.trig].values
+    hdl_values = df.iloc[:, args.hdl].values
+    ratio_values = []
+    for trig, hdl in zip(trig_values, hdl_values):
+        ratio_values.append(trig / hdl)
+    singlePlot(dates, ratio_values, "Trig/HDL", "ratio")
+if args.ldl and args.hdl:
+    ldl_values = df.iloc[:, args.ldl].values
+    hdl_values = df.iloc[:, args.hdl].values
+    ratio_values = []
+    for ldl, hdl in zip(ldl_values, hdl_values):
+        ratio_values.append(ldl / hdl)
+    singlePlot(dates, ratio_values, "LDL/HDL", "ratio")
+
 if args.weight:
-    singlePlot(df, "Weight", "kg", args.weight)
+    singlePlot(dates, df.iloc[:, args.weight].values, "Weight", "kg")
 if args.bpm:
-    singlePlot(df, "BPM", "1/min", args.bpm)
+    singlePlot(dates, df.iloc[:, args.bpm].values, "BPM", "1/min")
 if args.bp:
     items = args.bp.split(',')
     if len(items) != 2:
         raise ValueError('Cannot parse blood pressure columns')
-    bloodPressurePlot(df, int(items[0]), int(items[1]))
-        
+    sys_column = int(items[0])
+    dia_column = int(items[1])
+    bloodPressurePlot(dates, df.iloc[:, sys_column].values, df.iloc[:, dia_column].values)
